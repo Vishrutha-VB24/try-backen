@@ -10,6 +10,17 @@ dotenv.config({
 })
 
 connectDB()
+.then(()=>{
+    app.listen(process.env.PORT || 8000, ()=>{
+        console.log(`Sever is running at port:${process.env.PORT}`)
+    })
+    console
+})
+.catch((err) =>{
+    console.log("MONGO db connection failed ",err);
+})
+
+
 
 
 
