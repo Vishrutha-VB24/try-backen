@@ -1,6 +1,6 @@
 import {v2 as cloudinary } from "cloudinary"
 import { response } from "express";
-import fs from "fs"
+import fs from "fs"//file system to access the server file system
        
 cloudinary.config({ 
   cloud_name: 'process.env.CLOUDINARY__NAME', 
