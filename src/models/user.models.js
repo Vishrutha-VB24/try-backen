@@ -1,95 +1,102 @@
-import mongoose,{Schema} from "mongoose";
+import mongoose from 'mongoose';
+const { Schema } = mongoose; // Destructure Schema for cleaner syntax
 
 import jwt from "jsonwebtoken"
-
 import bcrypt from "bcrypt"
 
-const userSchema = new Schema(
+const userSchema = new Schema({
+  username: {
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+    trim: true,
+    index: true, // Ensure efficient username lookups
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    lowercase: true,
+    trim: true,
+  },
+  fullName: {
+    type: String,
+    required: true,
+    trim: true,
+    index: true, // Enable faster searches by full name (optional)
+  },
+  avatar: {
+    type: String,
+  },
+  coverImage: {
+    type: String,
+  },
+  watchhistory: [
     {
-    username:{
-        type:String,
-        required:true,
-        unique:true,
-        lowercase:true,
-        trim:true,
-        index:true
+      type: Schema.Types.ObjectId,
+      ref: 'Video', // Reference the Video model for watch history
     },
-    email:{
-        type: String,
-        required:true,
-        unique:true,
-        lowercase:true,
-        trim:true,
-        
-    },
-    fullName:{
-        type: String,
-        required:true,
-        index:true,
-        trim:true,
-        
-    },
-    avatar:{
-        type:String,
-        required:true,
-    },
-    coverImage:{
-        type:String,
-    },
-    watchhistory:[{
-        type:Schema.Types.ObjectId,
-        ref:"Video"
-    }],
-    password:{
-        type:String,
-        required:[true,'Password is required']
-    },
-    refreshToken:{
-        type:String
-    }
+  ],
+  password: {
+    type: String,
+    required: [true, 'Password is required'],
+    minlength: 6, // Enforce a minimum password length for security
+  },
+  refreshToken: {
+    type: String,
+  },
+}, {
+  timestamps: true, // Include automatic timestamps for document creation/update
+});
 
-},
-{
-    timestamps:true
-})
+// Hash password before saving (middleware)
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
 
-userSchema.pre("save",async function (next){
-    if(!this.isModified("password")) return next();
+  try {
+    const salt = await bcrypt.genSalt(10); // Generate a random salt for hashing
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (err) {
+    next(err); // Handle potential errors during password hashing
+  }
+});
 
-    this.password = await bcrypt.hash(this.password, 10)
-    next()
-})
+// Verify password correctness (method)
+userSchema.methods.isPasswordCorrect = async function (password) {
+  return await bcrypt.compare(password, this.password);
+};
 
-userSchema.methods.isPasswordCorrect = async function(password){
-    return await bcrypt.compare(password, this.password)
-}
-
-userSchema.method.generateAccessToken = function(){
-    return jwt.sign(
-        {
-        _id:this._id,
-        email:this.email,
-        username:this.username,
-        fullName:this.fullName
+// Generate access token (method)
+userSchema.methods.generateAccessToken = function () {
+  return jwt.sign(
+    {
+      _id: this._id,
+      email: this.email,
+      username: this.username,
+      fullName: this.fullName,
     },
     process.env.ACCESS_TOKEN_SECRET,
     {
-        expiresIn:process.env.ACCESS_TOKEN_EXPIRY
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
     }
-)
-}
-userSchema.method.generateRefreshToken = function(){
-    return jwt.sign(
-        {
-        _id:this._id,
-        
+  );
+};
+
+// Generate refresh token (method)
+userSchema.methods.generateRefreshToken = function () {
+  return jwt.sign(
+    {
+      _id: this._id,
     },
     process.env.REFRESH_TOKEN_SECRET,
     {
-        expiresIn:process.env.REFRESH_TOKEN_EXPIRY
+      expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
     }
-)
+  );
+};
 
-}
+const User = mongoose.model('User', userSchema);
 
-export const User = mongoose.model("User",userSchema)
+export { User };
